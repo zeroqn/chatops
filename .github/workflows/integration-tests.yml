@@ -1,0 +1,74 @@
+name: Integration test from PR
+# Triggered use /itest comment from pr
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  pr-info:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Query author repository permissions
+        uses: octokit/request-action@v2.x
+        id: user_permission
+        with:
+          route: GET /repos/${{ github.repository }}/collaborators/${{ github.event.sender.login }}/permission
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # restrict /itest to users with admin or write permission
+      # see https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-repository-permissions-for-a-user
+      - name: Check if user does have correct permissions
+        if: contains('admin write', fromJson(steps.user_permission.outputs.data).permission)
+        id: check_user_perm
+        run: |
+          echo "User '${{ github.event.sender.login }}' has permission '${{ fromJson(steps.user_permission.outputs.data).permission }}' allowed values: 'admin', 'write'"
+          echo "::set-output name=allowed_user::true"
+    outputs:
+      allowed_user: ${{ steps.check_user_perm.outputs.allowed_user }}
+
+  integration-test:
+    needs: pr-info
+    if: needs.pr-info.outputs.allowed_user == 'true' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/github-script@v3
+        id: get-pr
+        with:
+          script: |
+            const request = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number
+            }
+            core.info(`Getting PR #${request.pull_number} from ${request.owner}/${request.repo}`)
+            try {
+              const result = await github.pulls.get(request)
+              return result.data
+            } catch (err) {
+              core.setFailed(`Request failed with error ${err}`)
+            }
+      - uses: actions/checkout@v2
+        with:
+          repository: ${{ fromJSON(steps.get-pr.outputs.result).head.repo.full_name }}
+          fetch-depth: 0
+          ref: ${{ fromJSON(steps.get-pr.outputs.result).head.ref }}
+
+      - name: Get the commit SHA that triggered the workflow
+        id: get_commit_sha
+        run: |
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
+      - name: Write a comment on the PR with sha commit
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: 'PR commit sha short ${{ steps.get_commit_sha.outputs.sha_short }}'
+            })
