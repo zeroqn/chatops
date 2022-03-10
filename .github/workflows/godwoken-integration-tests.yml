@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/github-script@v3
-        id: get-pr
+        id: get_pr
         with:
           script: |
             const request = {
@@ -52,9 +52,9 @@ jobs:
             }
       - uses: actions/checkout@v2
         with:
-          repository: ${{ fromJSON(steps.get-pr.outputs.result).head.repo.full_name }}
+          repository: ${{ fromJSON(steps.get_pr.outputs.result).head.repo.full_name }}
           fetch-depth: 0
-          ref: ${{ fromJSON(steps.get-pr.outputs.result).head.ref }}
+          ref: ${{ fromJSON(steps.get_pr.outputs.result).head.ref }}
 
       - name: Get the commit SHA that triggered the workflow
         id: get_commit_sha
@@ -63,32 +63,72 @@ jobs:
 
       - name: Get components commit SHA
         id: get_components_commit_sha
-        uses: actions/github-script@v3
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
+        uses: actions/github-script@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const {COMMENT_BODY} = process.env
+            core.info(`comment body ${COMMENT_BODY}`);
+
             const gw_ref_pat = /godwoken_ref: (.*)/g;
             const gw_scripts_ref_pat = /godwoken_scripts_ref: (.*)/g;
-            const gw_polyjuice_ref_pat = /godwoken_polyjuice_reff: (.*)/g;
+            const gw_polyjuice_ref_pat = /godwoken_polyjuice_ref: (.*)/g;
 
-            const gw_ref = gw_ref_pat.exec("$COMMENT_BODY");
-            const gw_scripts_ref = gw_scripts_ref_pat.exec("$COMMENT_BODY");
-            const gw_polyjuice_ref = gw_polyjuice_ref_pat.exec("$COMMENT_BODY");
+            const gw_ref = gw_ref_pat.exec(`${COMMENT_BODY}`)[1];
+            const gw_scripts_ref = gw_scripts_ref_pat.exec(`${COMMENT_BODY}`)[1];
+            const gw_polyjuice_ref = gw_polyjuice_ref_pat.exec(`${COMMENT_BODY}`)[1];
 
             core.info(`gw_ref: ${gw_ref}, gw_scripts_ref: ${gw_scripts_ref}, gw_polyjuice_ref: ${gw_polyjuice_ref}`);
 
             return {gw_ref, gw_scripts_ref, gw_polyjuice_ref}
+
+      - name: Get components commit url
+        id: get_components_commit_url
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const GITHUB_ROOT_URL = 'https://github.com'
+            const GODWOKEN_OWNER = 'nervosnetwork'
+            const GODWOKEN_REPO  = 'godwoken'
+            const GODWOKEN_SCRIPTS_REPO  = 'godwoken-scripts'
+            const GODWOKEN_POLYJUICE_REPO = 'godwoken-polyjuice'
+
+            const COMPONENT_OWNER = `${GITHUB_ROOT_URL}/${GODWOKEN_OWNER}`
+
+            const { gw_ref, gw_scripts_ref, gw_polyjuice_ref } = JSON.parse(`${{ steps.get_components_commit_sha.outputs.result }}`)
+            const gw_commit_url = `${COMPONENT_OWNER}/${GODWOKEN_REPO}/commit/${gw_ref}`
+            const gw_scripts_commit_url = `${COMPONENT_OWNER}/${GODWOKEN_SCRIPTS_REPO}/commit/${gw_scripts_ref}`
+            const gw_polyjuice_commit_url = `${COMPONENT_OWNER}/${GODWOKEN_POLYJUICE_REPO}/commit/${gw_polyjuice_ref}`
+
+            const components_commit_url = {
+              gw_commit_url,
+              gw_scripts_commit_url,
+              gw_polyjuice_commit_url,
+            };
+            core.info(JSON.stringify(components_commit_url))
+
+            return components_commit_url
 
       - name: Write a comment on the PR with sha commit
         uses: actions/github-script@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const { gw_commit_url, gw_scripts_commit_url, gw_polyjuice_commit_url } = JSON.parse(`${{ steps.get_components_commit_url.outputs.result }}`)
+
+            const comment_body = `
+              PR commit sha short ${{ steps.get_commit_sha.outputs.sha_short }}
+              godwoken commit: ${gw_commit_url}
+              godwoken-scripts commit: ${gw_scripts_commit_url}
+              godwoken-polyjuice commit: ${gw_polyjuice_commit_url}
+            `
+
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'PR commit sha short ${{ steps.get_commit_sha.outputs.sha_short }} ${{ steps.get_components_commit_sha.outputs }}'
+              body: comment_body,
             })
