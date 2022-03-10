@@ -61,6 +61,26 @@ jobs:
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
+      - name: Get components commit SHA
+        id: get_components_commit_sha
+        uses: actions/github-script@v3
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const gw_ref_pat = /godwoken_ref: (.*)/g;
+            const gw_scripts_ref_pat = /godwoken_scripts_ref: (.*)/g;
+            const gw_polyjuice_ref_pat = /godwoken_polyjuice_reff: (.*)/g;
+
+            const gw_ref = gw_ref_pat.exec("$COMMENT_BODY");
+            const gw_scripts_ref = gw_scripts_ref_pat.exec("$COMMENT_BODY");
+            const gw_polyjuice_ref = gw_polyjuice_ref_pat.exec("$COMMENT_BODY");
+
+            core.info(`gw_ref: ${gw_ref}, gw_scripts_ref: ${gw_scripts_ref}, gw_polyjuice_ref: ${gw_polyjuice_ref}`);
+
+            return {gw_ref, gw_scripts_ref, gw_polyjuice_ref}
+
       - name: Write a comment on the PR with sha commit
         uses: actions/github-script@v3
         with:
@@ -70,5 +90,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'PR commit sha short ${{ steps.get_commit_sha.outputs.sha_short }}'
+              body: 'PR commit sha short ${{ steps.get_commit_sha.outputs.sha_short }} ${{ steps.get_components_commit_sha.outputs }}'
             })
