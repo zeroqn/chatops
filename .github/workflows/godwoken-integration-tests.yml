@@ -85,9 +85,9 @@ jobs:
 
             let components_commit_ref = {}
             components.forEach((comp, idx) => {
-              const ref = ref_pats[idx].exec(`${COMMENT_BODY}`)[1]
-              if (ref) {
-                components_commit_ref[comp] = ref
+              const match = ref_pats[idx].exec(`${COMMENT_BODY}`)
+              if (match) {
+                components_commit_ref[comp] = match[1]
               }
             })
             core.info(JSON.stringify(components_commit_ref))
