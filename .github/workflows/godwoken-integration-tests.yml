@@ -29,10 +29,12 @@ jobs:
     outputs:
       allowed_user: ${{ steps.check_user_perm.outputs.allowed_user }}
 
-  integration-test:
+  component-info:
     needs: pr-info
     if: needs.pr-info.outputs.allowed_user == 'true' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
     runs-on: ubuntu-20.04
+    outputs:
+      components_commit_ref: ${{ steps.get_components_commit_ref.outputs.result }}
     steps:
       - uses: actions/github-script@v3
         id: get_pr
@@ -153,3 +155,15 @@ jobs:
               repo: context.repo.repo,
               body: comment_body,
             })
+
+  integration-test:
+    needs: component-info
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
+    uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
+    with:
+      # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
+      # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
+      godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_commit_ref).godwoken }}
+      gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_commit_ref).godwoken-scripts }}
+      polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_commit_ref).godwoken-polyjuice }}
+      kicker_ref: "compatibility-changes"
