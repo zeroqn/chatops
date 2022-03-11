@@ -141,7 +141,7 @@ jobs:
           script: |
             const components_commit_url = JSON.parse(`${{ steps.get_components_commit_url.outputs.result }}`)
 
-            let comment_body = ''
+            let comment_body = `Run integration test with components commit:\n`
             Object.entries(components_commit_url).forEach((entry) => {
               const [component, commit_url] = entry
               comment_body = `${comment_body}\n${component} commit: ${commit_url}`
