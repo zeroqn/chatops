@@ -120,12 +120,12 @@ jobs:
 
               // If commit ref is specified in comment body, use that one
               if (component_refs[component_repo] && component_repo !== context.repo.repo) {
-                component_commit_url = `${default_commit_url}/${component_refs[component_repo]}`
+                component_commit_url = `${component_commit_url}/${component_refs[component_repo]}`
               }
 
               // Use pr commit ref for current repo
               if (component_repo === context.repo.repo) {
-                component_commit_url = `${default_commit_url}/${{ steps.get_commit_sha.outputs.sha_short }}`
+                component_commit_url = `${component_commit_url}/${{ steps.get_commit_sha.outputs.sha_short }}`
               }
 
               components_commit_url[component_repo] = component_commit_url
