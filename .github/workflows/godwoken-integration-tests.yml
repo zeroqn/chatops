@@ -114,7 +114,7 @@ jobs:
 
             let components_commit_url = {}
             const component_repos = [GODWOKEN_REPO, GODWOKEN_SCRIPTS_REPO, GODWOKEN_POLYJUICE_REPO]
-            for (component_repo in component_repos) {
+            for (component_repo of component_repos) {
               // Default branch commit
               let component_commit_url = `${COMPONENT_OWNER}/${component_repo}/commit`
 
@@ -142,7 +142,7 @@ jobs:
             const components_commit_url = JSON.parse(`${{ steps.get_components_commit_url.outputs.result }}`)
 
             let comment_body = ''
-            for (const component in components_commit_url) {
+            for (const component of components_commit_url) {
               const commit_url = components_commit_url[component]
               comment_body = `${comment_body}\n${component} commit: ${commit_url}`
             }
