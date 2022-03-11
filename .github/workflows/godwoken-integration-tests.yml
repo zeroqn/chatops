@@ -61,8 +61,8 @@ jobs:
         run: |
           echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
 
-      - name: Get components commit SHA
-        id: get_components_commit_sha
+      - name: Get components commit ref
+        id: get_components_commit_ref
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
         uses: actions/github-script@v3
@@ -72,17 +72,27 @@ jobs:
             const {COMMENT_BODY} = process.env
             core.info(`comment body ${COMMENT_BODY}`);
 
-            const gw_ref_pat = /godwoken_ref: (.*)/g;
-            const gw_scripts_ref_pat = /godwoken_scripts_ref: (.*)/g;
-            const gw_polyjuice_ref_pat = /godwoken_polyjuice_ref: (.*)/g;
+            const GODWOKEN_COMP  = 'godwoken'
+            const GODWOKEN_SCRIPTS_COMP = 'godwoken-scripts'
+            const GODWOKEN_POLYJUICE_COMP = 'godwoken-polyjuice'
 
-            const gw_ref = gw_ref_pat.exec(`${COMMENT_BODY}`)[1];
-            const gw_scripts_ref = gw_scripts_ref_pat.exec(`${COMMENT_BODY}`)[1];
-            const gw_polyjuice_ref = gw_polyjuice_ref_pat.exec(`${COMMENT_BODY}`)[1];
+            const GODWOKEN_REF_PAT = /godwoken: (.*)/g;
+            const GODWOKEN_SCRIPT_REF_PAT = /godwoken-scripts: (.*)/g;
+            const GODWOKEN_POLYJUICE_REF_PAT = /godwoken-polyjuice: (.*)/g;
 
-            core.info(`gw_ref: ${gw_ref}, gw_scripts_ref: ${gw_scripts_ref}, gw_polyjuice_ref: ${gw_polyjuice_ref}`);
+            const components = [GODWOKEN_COMP, GODWOKEN_SCRIPTS_COMP, GODWOKEN_POLYJUICE_COMP]
+            const ref_pats = [GODWOKEN_REF_PAT, GODWOKEN_SCRIPT_REF_PAT, GODWOKEN_POLYJUICE_REF_PAT]
 
-            return {gw_ref, gw_scripts_ref, gw_polyjuice_ref}
+            let components_commit_ref = {}
+            components.forEach((comp, idx) => {
+              const ref = ref_pats[idx].exec(`${COMMENT_BODY}`)[1]
+              if (ref) {
+                components_commit_ref[comp] = ref
+              }
+            })
+            core.info(JSON.stringify(components_commit_ref))
+
+            return components_commit_ref
 
       - name: Get components commit url
         id: get_components_commit_url
@@ -90,24 +100,36 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            core.info(`context repo ${context.repo.repo}`)
+
             const GITHUB_ROOT_URL = 'https://github.com'
             const GODWOKEN_OWNER = 'nervosnetwork'
+            // NOTE: ensure values are same as component values above
             const GODWOKEN_REPO  = 'godwoken'
             const GODWOKEN_SCRIPTS_REPO  = 'godwoken-scripts'
             const GODWOKEN_POLYJUICE_REPO = 'godwoken-polyjuice'
 
             const COMPONENT_OWNER = `${GITHUB_ROOT_URL}/${GODWOKEN_OWNER}`
+            const component_refs = JSON.parse(`${{ steps.get_components_commit_ref.outputs.result }}`)
 
-            const { gw_ref, gw_scripts_ref, gw_polyjuice_ref } = JSON.parse(`${{ steps.get_components_commit_sha.outputs.result }}`)
-            const gw_commit_url = `${COMPONENT_OWNER}/${GODWOKEN_REPO}/commit/${gw_ref}`
-            const gw_scripts_commit_url = `${COMPONENT_OWNER}/${GODWOKEN_SCRIPTS_REPO}/commit/${gw_scripts_ref}`
-            const gw_polyjuice_commit_url = `${COMPONENT_OWNER}/${GODWOKEN_POLYJUICE_REPO}/commit/${gw_polyjuice_ref}`
+            let components_commit_url = {}
+            const component_repos = [GODWOKEN_REPO, GODWOKEN_SCRIPTS_REPO, GODWOKEN_POLYJUICE_REPO]
+            for (component_repo in component_repos) {
+              // Default branch commit
+              let component_commit_url = `${COMPONENT_OWNER}/${component_repo}/commit`
 
-            const components_commit_url = {
-              gw_commit_url,
-              gw_scripts_commit_url,
-              gw_polyjuice_commit_url,
-            };
+              // If commit ref is specified in comment body, use that one
+              if (component_refs[component_repo] && component_repo !== context.repo.repo) {
+                component_commit_url = `${default_commit_url}/${component_refs[component_repo]}`
+              }
+
+              // Use pr commit ref for current repo
+              if (component_repo === context.repo.repo) {
+                component_commit_url = `${default_commit_url}/${{ steps.get_commit_sha.outputs.sha_short }}`
+              }
+
+              components_commit_url[component_repo] = component_commit_url
+            }
             core.info(JSON.stringify(components_commit_url))
 
             return components_commit_url
@@ -117,14 +139,13 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { gw_commit_url, gw_scripts_commit_url, gw_polyjuice_commit_url } = JSON.parse(`${{ steps.get_components_commit_url.outputs.result }}`)
+            const components_commit_url = JSON.parse(`${{ steps.get_components_commit_url.outputs.result }}`)
 
-            const comment_body = `
-              PR commit sha short ${{ steps.get_commit_sha.outputs.sha_short }}
-              godwoken commit: ${gw_commit_url}
-              godwoken-scripts commit: ${gw_scripts_commit_url}
-              godwoken-polyjuice commit: ${gw_polyjuice_commit_url}
-            `
+            let comment_body = ''
+            for (const component in components_commit_url) {
+              const commit_url = components_commit_url[component]
+              comment_body = `${comment_body}\n${component} commit: ${commit_url}`
+            }
 
             github.issues.createComment({
               issue_number: context.issue.number,
