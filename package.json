@@ -1,0 +1,13 @@
+{
+  "name": "chatops",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com-zeroqn:zeroqn/chatops.git",
+  "author": "zero.qn <zero.qn@outlook.com>",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^16.0.0",
+    "octokit": "^1.7.1"
+  }
+}
