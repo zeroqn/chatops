@@ -6,37 +6,114 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_AUTH_TOKEN,
 });
 
-const owner = "nervosnetwork";
-const repo = "godwoken";
-const target_branch = "compatibility-breaking-changes";
+const commentBody = `
+godwoken: develop
+polyjuice: e37553b94ce3255f9ceec07f28ad71a092bc3d62
+`;
+console.log(`comment: ${commentBody}`);
 
-const branch = await octokit.rest.repos.getBranch({
-  owner,
-  repo,
-  branch: target_branch,
-});
+// Parse commentBody
+const components = {
+  godwoken: {
+    owner: "nervosnetwork",
+    repo: "godwoken",
+    branch: "compatibility-breaking-changes",
+    pattern: /godwoken: (.*)/,
+    commit: undefined,
+    htmlUrl: undefined,
+    branchOrCommit: undefined,
+  },
+  scripts: {
+    owner: "nervosnetwork",
+    repo: "godwoken-scripts",
+    branch: "compatibility-breaking-changes",
+    pattern: /scripts: (.*)/,
+    commit: undefined,
+    htmlUrl: undefined,
+    branchOrCommit: undefined,
+  },
+  polyjuice: {
+    owner: "nervosnetwork",
+    repo: "godwoken-polyjuice",
+    branch: "compatibility-breaking-changes",
+    pattern: /polyjuice: (.*)/,
+    commit: undefined,
+    htmlUrl: undefined,
+    branchOrCommit: undefined,
+  },
+  web3: {
+    owner: "nervosnetwork",
+    repo: "godwoken-web3",
+    branch: "compatibility-breaking-changes",
+    pattern: /web3: (.*)/,
+    commit: undefined,
+    htmlUrl: undefined,
+    branchOrCommit: undefined,
+  },
+  kicker: {
+    owner: "RetricSu",
+    repo: "godwoken-kicker",
+    branch: "compatibility-changes",
+    pattern: /kicker: (.*)/,
+    commit: undefined,
+    htmlUrl: undefined,
+    branchOrCommit: undefined,
+  },
+};
 
-console.log(branch.data.commit.sha);
-console.log(branch.data.commit.url);
-console.log(branch.data.commit.html_url);
+for (const name in components) {
+  const comp = components[name];
+  const match = comp.pattern.exec(`${commentBody}`);
+  if (match) {
+    comp.branchOrCommit = match[1];
+  } else {
+    comp.branchOrCommit = comp.branch;
+  }
+}
+console.log(JSON.stringify(components));
 
-const commit = await octokit.rest.git.getCommit({
-  owner,
-  repo,
-  commit_sha: branch.data.commit.sha,
-});
+// Fetch branch/commit sha and html url
+for (const name in components) {
+  const comp = components[name];
+  console.log(`fetch branch or commit ${name}`);
 
-console.log(commit.data.sha);
-console.log(commit.data.url);
-console.log(commit.data.html_url);
+  try {
+    // Try branch
+    const resp = await octokit.rest.repos.getBranch({
+      owner: comp.owner,
+      repo: comp.repo,
+      branch: comp.branchOrCommit,
+    });
+    comp.commit = resp.data.commit.sha;
+    comp.htmlUrl = resp.data.commit.html_url;
+  } catch {
+    console.log(`${comp.branchOrCommit} branch not found`);
+  }
 
-const ref = await octokit.rest.git.getRef({
-  owner,
-  repo,
-  ref: `heads/${target_branch}`,
-});
+  try {
+    if (comp.commit === undefined) {
+      // Try commit
+      const resp = await octokit.rest.git.getCommit({
+        owner: comp.owner,
+        repo: comp.repo,
+        commit_sha: comp.branchOrCommit,
+      });
+      comp.commit = resp.data.sha;
+      comp.htmlUrl = resp.data.html_url;
+    }
+  } catch {
+    console.log(`${comp.branchOrCommit} is neither branch nor commit`);
+  }
+}
+console.log(JSON.stringify(components));
 
-console.log(JSON.stringify(ref.data));
-console.log(ref.data.object.sha);
-console.log(ref.data.object.type);
-console.log(ref.data.object.url);
+// Post integration test info
+let componentInfo = `
+Run integration with following specific components:
+`;
+for (const name in components) {
+  const comp = components[name];
+  const shortSha = comp.commit.substr(0, 7);
+  componentInfo = `${componentInfo}\n${name}: [${shortSha}](${comp.htmlUrl})`;
+}
+console.log(`${componentInfo}`);
