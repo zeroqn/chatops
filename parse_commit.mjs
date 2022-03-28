@@ -6,6 +6,16 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_AUTH_TOKEN,
 });
 
+const context = {
+  repo: {
+    owner: "nervosnetwork",
+    repo: "godwoken",
+  },
+  issue: {
+    number: 628,
+  },
+};
+
 const getPrebuilds = async (org, page, perPage) => {
   return await octokit.rest.packages.getAllPackageVersionsForPackageOwnedByOrg({
     package_type: "container",
@@ -106,6 +116,17 @@ const components = {
   },
 };
 
+// Fetch pr commit
+const pr = (
+  await octokit.rest.pulls.get({
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    pull_number: context.issue.number,
+  })
+).data.head;
+console.log(`${JSON.stringify(pr.ref)}`);
+console.log(`${JSON.stringify(pr.repo.name)}`);
+
 // Fetch prebuilds
 const matchPrebuilds = async () => {
   const match = prebuilds.pattern.exec(`${commentBody}`);
@@ -139,6 +160,13 @@ console.log(`${JSON.stringify(prebuilds)}`);
 
 for (const name in components) {
   const comp = components[name];
+
+  // Ref from pr is priority
+  if (pr.repo.name === comp.repo) {
+    comp.branchOrCommit = pr.sha;
+    continue;
+  }
+
   const match = comp.pattern.exec(`${commentBody}`);
   if (match) {
     comp.branchOrCommit = match[1];
