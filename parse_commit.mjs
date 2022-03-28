@@ -8,7 +8,8 @@ const octokit = new Octokit({
 
 const commentBody = `
 godwoken: develop
-polyjuice: e37553b94ce3255f9ceec07f28ad71a092bc3d62
+scripts: 81676d9d53ffdf5bbaa60483928d07da16eb4a88
+polyjuice: e37553b9
 `;
 console.log(`comment: ${commentBody}`);
 
@@ -102,7 +103,32 @@ for (const name in components) {
       comp.htmlUrl = resp.data.html_url;
     }
   } catch {
-    console.log(`${comp.branchOrCommit} is neither branch nor commit`);
+    console.log(`${comp.branchOrCommit} full commit not found`);
+  }
+
+  try {
+    if (comp.commit === undefined) {
+      // Try serach commits
+      const resp = await octokit.rest.repos.listCommits({
+        owner: comp.owner,
+        repo: comp.repo,
+        sha: comp.branchOrCommit,
+        per_page: 1,
+        page: 1,
+      });
+      if (resp.data[0].sha.startsWith(comp.branchOrCommit)) {
+        comp.commit = resp.data[0].sha;
+        comp.htmlUrl = resp.data[0].html_url;
+      } else {
+        throw `${comp.branchOrCommit} short sha commit not found`;
+      }
+    }
+  } catch {
+    console.log(`${comp.branchOrCommit} short commit not found`);
+  }
+
+  if (comp.commit === undefined) {
+    throw `${comp.branchOrCommit} not found`;
   }
 }
 console.log(JSON.stringify(components));
