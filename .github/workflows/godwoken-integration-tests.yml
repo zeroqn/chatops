@@ -46,7 +46,7 @@ jobs:
             core.info(`comment body ${COMMENT_BODY}`);
 
             const getPrebuilds = async (org, page, perPage) => {
-              return await octokit.rest.packages.getAllPackageVersionsForPackageOwnedByOrg({
+              return await github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg({
                 package_type: "container",
                 package_name: "godwoken-prebuilds",
                 org,
@@ -139,7 +139,7 @@ jobs:
 
             // Fetch pr commit
             const pr = (
-              await octokit.rest.pulls.get({
+              await github.rest.pulls.get({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: context.issue.number,
@@ -166,7 +166,7 @@ jobs:
 
             // Fetch prebuilds components commit;
             const manifestPage = JSON.stringify(
-              await octokit.request(`GET ${prebuilds.htmlUrl}`)
+              await github.request(`GET ${prebuilds.htmlUrl}`)
             );
             for (const name in prebuilds.manifest) {
               const label = prebuilds.manifest[name];
@@ -214,7 +214,7 @@ jobs:
 
               try {
                 // Try branch
-                const resp = await octokit.rest.repos.getBranch({
+                const resp = await github.rest.repos.getBranch({
                   owner: comp.owner,
                   repo: comp.repo,
                   branch: comp.branchOrCommit,
@@ -228,7 +228,7 @@ jobs:
               try {
                 if (comp.commit === undefined) {
                   // Try commit
-                  const resp = await octokit.rest.git.getCommit({
+                  const resp = await github.rest.git.getCommit({
                     owner: comp.owner,
                     repo: comp.repo,
                     commit_sha: comp.branchOrCommit,
@@ -243,7 +243,7 @@ jobs:
               try {
                 if (comp.commit === undefined) {
                   // Try serach commits
-                  const resp = await octokit.rest.repos.listCommits({
+                  const resp = await github.rest.repos.listCommits({
                     owner: comp.owner,
                     repo: comp.repo,
                     sha: comp.branchOrCommit,
