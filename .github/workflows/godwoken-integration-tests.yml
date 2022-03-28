@@ -278,7 +278,7 @@ jobs:
             const components = components_info.components;
 
             // Post integration test info
-            let comment_body = `
+            let componentInfo = `
             Run integration test with following specific components:
 
             prebuilds: [${prebuilds.tags}](${prebuilds.htmlUrl})
@@ -297,7 +297,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: comment_body,
+              body: componentInfo,
             })
 
   integration-test:
