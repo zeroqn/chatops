@@ -36,7 +36,7 @@ jobs:
     outputs:
       components_info: ${{ steps.get_components.outputs.result }}
     steps:
-      - uses: actions/github-script@v3
+      - uses: actions/github-script@v6
         id: get_components
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
@@ -269,7 +269,7 @@ jobs:
             return {prebuilds, components};
 
       - name: Write a comment on the PR with component commits
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -293,7 +293,7 @@ jobs:
             }
             core.info(`${componentInfo}`);
 
-            github.issues.createComment({
+            github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
