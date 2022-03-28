@@ -34,120 +34,264 @@ jobs:
     if: needs.pr-info.outputs.allowed_user == 'true' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
     runs-on: ubuntu-20.04
     outputs:
-      components_commit_ref: ${{ steps.get_components_commit_ref.outputs.result }}
+      components_info: ${{ steps.get_components.outputs.result }}
     steps:
       - uses: actions/github-script@v3
-        id: get_pr
-        with:
-          script: |
-            const request = {
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number
-            }
-            core.info(`Getting PR #${request.pull_number} from ${request.owner}/${request.repo}`)
-            try {
-              const result = await github.pulls.get(request)
-              return result.data
-            } catch (err) {
-              core.setFailed(`Request failed with error ${err}`)
-            }
-      - uses: actions/checkout@v2
-        with:
-          repository: ${{ fromJSON(steps.get_pr.outputs.result).head.repo.full_name }}
-          fetch-depth: 1
-          ref: ${{ fromJSON(steps.get_pr.outputs.result).head.ref }}
-
-      - name: Get the commit SHA that triggered the workflow
-        id: get_commit_sha
-        run: |
-          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
-
-      - name: Get components commit ref
-        id: get_components_commit_ref
+        id: get_components
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
-        uses: actions/github-script@v3
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const {COMMENT_BODY} = process.env
             core.info(`comment body ${COMMENT_BODY}`);
 
-            const GODWOKEN_COMP  = 'godwoken'
-            const GODWOKEN_SCRIPTS_COMP = 'godwoken-scripts'
-            const GODWOKEN_POLYJUICE_COMP = 'godwoken-polyjuice'
+            const getPrebuilds = async (org, page, perPage) => {
+              return await octokit.rest.packages.getAllPackageVersionsForPackageOwnedByOrg({
+                package_type: "container",
+                package_name: "godwoken-prebuilds",
+                org,
+                page,
+                per_page: perPage,
+              });
+            };
 
-            const GODWOKEN_REF_PAT = /godwoken: (.*)/g;
-            const GODWOKEN_SCRIPT_REF_PAT = /godwoken-scripts: (.*)/g;
-            const GODWOKEN_POLYJUICE_REF_PAT = /godwoken-polyjuice: (.*)/g;
+            const getPrebuildsByTag = async (org, tag) => {
+              const pkgs = await getPrebuilds(org, 1, 100);
+              for (const pkg of pkgs.data) {
+                if (pkg.metadata.container.tags.includes(tag)) {
+                  return pkg;
+                }
+              }
+            };
 
-            const components = [GODWOKEN_COMP, GODWOKEN_SCRIPTS_COMP, GODWOKEN_POLYJUICE_COMP]
-            const ref_pats = [GODWOKEN_REF_PAT, GODWOKEN_SCRIPT_REF_PAT, GODWOKEN_POLYJUICE_REF_PAT]
+            // Parse commentBody
+            const prebuilds = {
+              org: "nervosnetwork",
+              repo: "godwoken-docker-prebuilds",
+              pattern: /prebuilds: (.*)/,
+              packageType: "container",
+              packageName: "godwoken-prebuilds",
+              tags: undefined,
+              sha: undefined,
+              htmlUrl: undefined,
+              manifest: {
+                godwoken: {
+                  pattern: /&quot;ref.component.godwoken-sha1&quot;: &quot;(.{40})&quot;,/,
+                  sha: undefined,
+                },
+                scripts: {
+                  pattern: /&quot;ref.component.godwoken-scripts-sha1&quot;: &quot;(.{40})&quot;,/,
+                  sha: undefined,
+                },
+                polyjuice: {
+                  pattern: /&quot;ref.component.godwoken-polyjuice-sha1&quot;: &quot;(.{40})&quot;,/,
+                  sha: undefined,
+                },
+              },
+            };
+            const components = {
+              godwoken: {
+                owner: "nervosnetwork",
+                repo: "godwoken",
+                branch: "compatibility-breaking-changes",
+                pattern: /godwoken: (.*)/,
+                commit: undefined,
+                htmlUrl: undefined,
+                branchOrCommit: undefined,
+              },
+              scripts: {
+                owner: "nervosnetwork",
+                repo: "godwoken-scripts",
+                branch: "compatibility-breaking-changes",
+                pattern: /scripts: (.*)/,
+                commit: undefined,
+                htmlUrl: undefined,
+                branchOrCommit: undefined,
+              },
+              polyjuice: {
+                owner: "nervosnetwork",
+                repo: "godwoken-polyjuice",
+                branch: "compatibility-breaking-changes",
+                pattern: /polyjuice: (.*)/,
+                commit: undefined,
+                htmlUrl: undefined,
+                branchOrCommit: undefined,
+              },
+              web3: {
+                owner: "nervosnetwork",
+                repo: "godwoken-web3",
+                branch: "compatibility-breaking-changes",
+                pattern: /web3: (.*)/,
+                commit: undefined,
+                htmlUrl: undefined,
+                branchOrCommit: undefined,
+              },
+              kicker: {
+                owner: "RetricSu",
+                repo: "godwoken-kicker",
+                branch: "compatibility-changes",
+                pattern: /kicker: (.*)/,
+                commit: undefined,
+                htmlUrl: undefined,
+                branchOrCommit: undefined,
+              },
+            };
 
-            let components_commit_ref = {}
-            components.forEach((comp, idx) => {
-              const match = ref_pats[idx].exec(`${COMMENT_BODY}`)
+            // Fetch pr commit
+            const pr = (
+              await octokit.rest.pulls.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.issue.number,
+              })
+            ).data.head;
+            core.info(`${JSON.stringify(pr.ref)}`);
+            core.info(`${JSON.stringify(pr.repo.name)}`);
+
+            // Fetch prebuilds
+            const matchPrebuilds = async () => {
+              const match = prebuilds.pattern.exec(`${COMMENT_BODY}`);
               if (match) {
-                components_commit_ref[comp] = match[1]
+                return await getPrebuildsByTag(prebuilds.org, match[1]);
+              } else {
+                return (await getPrebuilds(prebuilds.org, 1, 2)).data[0];
               }
-            })
-            core.info(JSON.stringify(components_commit_ref))
+            };
+            const pkg = await matchPrebuilds();
 
-            return components_commit_ref
+            prebuilds.tags = pkg.metadata.container.tags;
+            prebuilds.htmlUrl = pkg.html_url;
+            prebuilds.sha = pkg.name;
+            core.info(`pkg: ${JSON.stringify(pkg)}`);
 
-      - name: Get components commit url
-        id: get_components_commit_url
-        uses: actions/github-script@v3
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            core.info(`context repo ${context.repo.repo}`)
-
-            const GITHUB_ROOT_URL = 'https://github.com'
-            const GODWOKEN_OWNER = 'nervosnetwork'
-            // NOTE: ensure values are same as component values above
-            const GODWOKEN_REPO  = 'godwoken'
-            const GODWOKEN_SCRIPTS_REPO  = 'godwoken-scripts'
-            const GODWOKEN_POLYJUICE_REPO = 'godwoken-polyjuice'
-
-            const COMPONENT_OWNER = `${GITHUB_ROOT_URL}/${GODWOKEN_OWNER}`
-            const component_refs = JSON.parse(`${{ steps.get_components_commit_ref.outputs.result }}`)
-
-            let components_commit_url = {}
-            const component_repos = [GODWOKEN_REPO, GODWOKEN_SCRIPTS_REPO, GODWOKEN_POLYJUICE_REPO]
-            for (component_repo of component_repos) {
-              // Default branch commit
-              let component_commit_url = `${COMPONENT_OWNER}/${component_repo}/commit`
-
-              // If commit ref is specified in comment body, use that one
-              if (component_refs[component_repo] && component_repo !== context.repo.repo) {
-                component_commit_url = `${component_commit_url}/${component_refs[component_repo]}`
+            // Fetch prebuilds components commit;
+            const manifestPage = JSON.stringify(
+              await octokit.request(`GET ${prebuilds.htmlUrl}`)
+            );
+            for (const name in prebuilds.manifest) {
+              const label = prebuilds.manifest[name];
+              const match = label.pattern.exec(manifestPage);
+              if (match) {
+                label.sha = match[1];
+              } else {
+                throw `${name}-sha1 not found`;
               }
-
-              // Use pr commit ref for current repo
-              if (component_repo === context.repo.repo) {
-                component_commit_url = `${component_commit_url}/${{ steps.get_commit_sha.outputs.sha_short }}`
-              }
-
-              components_commit_url[component_repo] = component_commit_url
             }
-            core.info(JSON.stringify(components_commit_url))
+            core.info(`${JSON.stringify(prebuilds)}`);
 
-            return components_commit_url
+            for (const name in components) {
+              const comp = components[name];
+
+              // Ref from pr is priority
+              if (pr.repo.name === comp.repo) {
+                comp.branchOrCommit = pr.sha;
+                continue;
+              }
+
+              const match = comp.pattern.exec(`${COMMENT_BODY}`);
+              if (match) {
+                comp.branchOrCommit = match[1];
+              } else if (prebuilds.manifest[name]) {
+                comp.branchOrCommit = prebuilds.manifest[name].sha;
+              } else {
+                if (name === "web3") {
+                  continue;
+                }
+                comp.branchOrCommit = comp.branch;
+              }
+            }
+            core.info(JSON.stringify(components));
+
+            // Fetch branch/commit sha and html url
+            for (const name in components) {
+              const comp = components[name];
+              core.info(`fetch branch or commit ${name}`);
+
+              if (comp.branchOrCommit === undefined) {
+                core.info(`skip fetch component info ${name}`);
+                continue;
+              }
+
+              try {
+                // Try branch
+                const resp = await octokit.rest.repos.getBranch({
+                  owner: comp.owner,
+                  repo: comp.repo,
+                  branch: comp.branchOrCommit,
+                });
+                comp.commit = resp.data.commit.sha;
+                comp.htmlUrl = resp.data.commit.html_url;
+              } catch {
+                core.info(`${comp.branchOrCommit} branch not found`);
+              }
+
+              try {
+                if (comp.commit === undefined) {
+                  // Try commit
+                  const resp = await octokit.rest.git.getCommit({
+                    owner: comp.owner,
+                    repo: comp.repo,
+                    commit_sha: comp.branchOrCommit,
+                  });
+                  comp.commit = resp.data.sha;
+                  comp.htmlUrl = resp.data.html_url;
+                }
+              } catch {
+                core.info(`${comp.branchOrCommit} full commit not found`);
+              }
+
+              try {
+                if (comp.commit === undefined) {
+                  // Try serach commits
+                  const resp = await octokit.rest.repos.listCommits({
+                    owner: comp.owner,
+                    repo: comp.repo,
+                    sha: comp.branchOrCommit,
+                    per_page: 1,
+                    page: 1,
+                  });
+                  if (resp.data[0].sha.startsWith(comp.branchOrCommit)) {
+                    comp.commit = resp.data[0].sha;
+                    comp.htmlUrl = resp.data[0].html_url;
+                  } else {
+                    throw `${comp.branchOrCommit} short sha commit not found`;
+                  }
+                }
+              } catch {
+                core.error(`${comp.branchOrCommit} short commit not found`);
+              }
+
+              if (comp.commit === undefined) {
+                throw `${comp.branchOrCommit} not found`;
+              }
+            }
+            core.info(JSON.stringify(components));
+            return {prebuilds, components};
 
       - name: Write a comment on the PR with component commits
         uses: actions/github-script@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const components_commit_url = JSON.parse(`${{ steps.get_components_commit_url.outputs.result }}`)
+            const components_info = JSON.parse(`${{ steps.get_components.outputs.result }}`);
+            const prebuilds = components_info.prebuilds;
+            const components = components_info.components;
 
-            let comment_body = `Run integration test with components commit:\n`
-            Object.entries(components_commit_url).forEach((entry) => {
-              const [component, commit_url] = entry
-              comment_body = `${comment_body}\n${component} commit: ${commit_url}`
-            })
+            // Post integration test info
+            let comment_body = `
+            Run integration test with following specific components:
+
+            prebuilds: [${prebuilds.tags}](${prebuilds.htmlUrl})
+            `;
+            for (const name in components) {
+              const comp = components[name];
+              if (comp.commit === undefined) {
+                continue;
+              }
+              const shortSha = comp.commit.substr(0, 7);
+              componentInfo = `${componentInfo}\n${name}: [${shortSha}](${comp.htmlUrl})`;
+            }
+            core.info(`${componentInfo}`);
 
             github.issues.createComment({
               issue_number: context.issue.number,
@@ -163,7 +307,9 @@ jobs:
     with:
       # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
       # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
-      godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_commit_ref).godwoken }}
-      gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_commit_ref).godwoken-scripts }}
-      polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_commit_ref).godwoken-polyjuice }}
-      kicker_ref: "compatibility-changes"
+      kicker_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.kicker.commit }}
+      gw_prebuild_image_tag_ref: ${{ fromJSON(needs.component-info.outputs.components_info).prebuilds.tags[0] }}
+      godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.godwoken.commit }}
+      gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.scripts.commit }}
+      polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.polyjuice.commit }}
+      web3_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.web3.commit }}
