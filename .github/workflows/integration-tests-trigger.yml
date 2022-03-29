@@ -43,7 +43,7 @@ jobs:
               workflow_id: "godwoken-integration-tests.yml",
               ref: "main",
               inputs: {
-                dispatch,
+                dispatch: JSON.stringify(dispatch),
               }
             });
 
