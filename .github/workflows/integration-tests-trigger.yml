@@ -1,0 +1,62 @@
+name: Integration test from PR
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  from-comment:
+    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Query author repository permissions
+        uses: octokit/request-action@v2.x
+        id: user_permission
+        with:
+          route: GET /repos/${{ github.repository }}/collaborators/${{ github.event.sender.login }}/permission
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # restrict /itest to users with admin or write permission
+      # see https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-repository-permissions-for-a-user
+      - name: Check if user does have correct permissions
+        if: contains('admin write', fromJson(steps.user_permission.outputs.data).permission)
+        id: check_user_perm
+        run: |
+          echo "User '${{ github.event.sender.login }}' has permission '${{ fromJson(steps.user_permission.outputs.data).permission }}' allowed values: 'admin', 'write'"
+          echo "::set-output name=allowed_user::true"
+    outputs:
+      allowed_user: ${{ steps.check_user_perm.outputs.allowed_user }}
+
+  integration-test:
+    needs: from-comment
+    if: github.event.pull_request || (needs.from-comment.outputs.allowed_user == 'true' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/test')
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/github-script@v6
+        id: dispatch
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        with:
+          script: |
+            const { COMMENT_BODY } = process.env
+
+            const dispatch = {
+              comment_body: COMMENT_BODY,
+              repo: context.repo,
+              issue: context.issue,
+            };
+
+            const resp = await octokit.rest.actions.createWorkflowDispatch({
+              owner: "zeroqn",
+              repo: "chatops",
+              workflow_id: "godwoken-integration-tests.yml",
+              ref: "main",
+              inputs: {
+                dispatch,
+              }
+            });
+
+            core.info!(`${JSON.stringify(resp, null, 2)}`);

@@ -2,36 +2,15 @@ name: Integration test from PR
 # Triggered use /itest comment from pr
 
 on:
-  issue_comment:
-    types: [created]
+  workflow_dispatch:
+    inputs:
+      dispatch:
+        type: string
+        description: "Dispatch contains pr context that want to trigger integration test"
+        required: true
 
 jobs:
-  pr-info:
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Query author repository permissions
-        uses: octokit/request-action@v2.x
-        id: user_permission
-        with:
-          route: GET /repos/${{ github.repository }}/collaborators/${{ github.event.sender.login }}/permission
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # restrict /itest to users with admin or write permission
-      # see https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-repository-permissions-for-a-user
-      - name: Check if user does have correct permissions
-        if: contains('admin write', fromJson(steps.user_permission.outputs.data).permission)
-        id: check_user_perm
-        run: |
-          echo "User '${{ github.event.sender.login }}' has permission '${{ fromJson(steps.user_permission.outputs.data).permission }}' allowed values: 'admin', 'write'"
-          echo "::set-output name=allowed_user::true"
-    outputs:
-      allowed_user: ${{ steps.check_user_perm.outputs.allowed_user }}
-
   component-info:
-    needs: pr-info
-    if: needs.pr-info.outputs.allowed_user == 'true' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
     runs-on: ubuntu-20.04
     outputs:
       components_info: ${{ steps.get_components.outputs.result }}
@@ -39,11 +18,12 @@ jobs:
       - uses: actions/github-script@v6
         id: get_components
         env:
-          COMMENT_BODY: ${{ github.event.comment.body }}
+          DISPATCH: ${{ inputs.dispatch }}
         with:
           script: |
-            const {COMMENT_BODY} = process.env
-            core.info(`comment body ${COMMENT_BODY}`);
+            const dispatch = JSON.parse(process.env.DISPATCH);
+
+            core.info(`comment body ${dispatch.comment_body}`);
 
             const getPrebuilds = async (org, page, perPage) => {
               return await github.rest.packages.getAllPackageVersionsForPackageOwnedByOrg({
@@ -140,9 +120,9 @@ jobs:
             // Fetch pr commit
             const pr = (
               await github.rest.pulls.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.issue.number,
+                owner: dispatch.repo.owner,
+                repo: dispatch.repo.repo,
+                pull_number: dispatch.issue.number,
               })
             ).data.head;
             core.info(`${JSON.stringify(pr.ref)}`);
@@ -294,15 +274,14 @@ jobs:
             core.info(`${componentInfo}`);
 
             github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
+              issue_number: dispatch.issue.number,
+              owner: dispatch.repo.owner,
+              repo: dispatch.repo.repo,
               body: componentInfo,
             })
 
   integration-test:
     needs: component-info
-    if: github.event.issue.pull_request && startsWith(github.event.comment.body, '/itest')
     uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
     with:
       # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
