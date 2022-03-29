@@ -77,6 +77,7 @@ const components = {
     commit: undefined,
     htmlUrl: undefined,
     branchOrCommit: undefined,
+    usePrebuilds: undefined,
   },
   scripts: {
     owner: "nervosnetwork",
@@ -86,6 +87,7 @@ const components = {
     commit: undefined,
     htmlUrl: undefined,
     branchOrCommit: undefined,
+    usePrebuilds: undefined,
   },
   polyjuice: {
     owner: "nervosnetwork",
@@ -95,6 +97,7 @@ const components = {
     commit: undefined,
     htmlUrl: undefined,
     branchOrCommit: undefined,
+    usePrebuilds: undefined,
   },
   web3: {
     owner: "nervosnetwork",
@@ -181,6 +184,7 @@ for (const name in components) {
     comp.branchOrCommit = match[1];
   } else if (prebuilds.manifest[name]) {
     comp.branchOrCommit = prebuilds.manifest[name].sha;
+    comp.usePrebuilds = true;
   } else {
     if (name === "web3") {
       continue;
@@ -266,7 +270,10 @@ for (const name in components) {
   if (comp.commit === undefined) {
     continue;
   }
-  const shortSha = comp.commit.substr(0, 7);
+  let shortSha = comp.commit.substr(0, 7);
+  if (comp.usePrebuilds) {
+    shortSha = `prebuilds ${shortSha}`;
+  }
   componentInfo = `${componentInfo}\n${name}: [${shortSha}](${comp.htmlUrl})`;
 }
 console.log(`${componentInfo}`);
