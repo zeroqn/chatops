@@ -15,6 +15,11 @@ jobs:
     outputs:
       components_info: ${{ steps.get_components.outputs.result }}
     steps:
+      - name: Echo inputs dispatch
+        id: echo_inputs_dispatch
+        run: |
+          echo "dispatch string '${{ inputs.dispatch }}'"
+
       - uses: actions/github-script@v6
         id: get_components
         with:
