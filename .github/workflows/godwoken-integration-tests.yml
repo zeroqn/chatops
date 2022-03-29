@@ -259,6 +259,7 @@ jobs:
             return {prebuilds, components};
 
       - name: Write a comment on the PR with component commits
+        id: write_workflow_run_comment
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -268,35 +269,105 @@ jobs:
             const components = components_info.components;
             const dispatch = JSON.parse(`${{ github.event.inputs.dispatch }}`);
 
+            const workflowRun = (await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: github.run_id,
+            })).data;
+            core.info(`action html url: ${workflowRun.html_url}`)
+
             // Post integration test info
             let componentInfo = `
-            Run integration test with following specific components:
+            Run integration test
+
+            [workflow run id ${workflowRun.id}](${workflowRun.html_url})
+              
+            With following specific components:
 
             prebuilds: [${prebuilds.tags}](${prebuilds.htmlUrl})
             `;
+
             for (const name in components) {
               const comp = components[name];
               if (comp.commit === undefined) {
                 continue;
               }
-              const shortSha = comp.commit.substr(0, 7);
+              let shortSha = comp.commit.substr(0, 7);
+              if (comp.usePrebuilds) {
+                shortSha = `prebuilds ${shortSha}`;
+              }
               componentInfo = `${componentInfo}\n${name}: [${shortSha}](${comp.htmlUrl})`;
             }
             core.info(`${componentInfo}`);
 
-            github.rest.issues.createComment({
+            const comment = await github.rest.issues.createComment({
               issue_number: dispatch.issue.number,
               owner: dispatch.repo.owner,
               repo: dispatch.repo.repo,
               body: componentInfo,
-            })
-      # - name: Run integration test
-      #   uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
-      #   with:
-      #     # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
-      #     # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
-      #     kicker_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.kicker.commit }}
-      #     gw_prebuild_image_tag: ${{ fromJSON(needs.component-info.outputs.components_info).prebuilds.tags[0] }}
-      #     godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.godwoken.commit }}
-      #     gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.scripts.commit }}
-      #     polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.polyjuice.commit }}
+            }).data;
+
+            return comment.id
+
+      - name: Filter components use prebuilds
+        id: filter_prebuilds_components
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const {prebuilds, components} = JSON.parse(${{ steps.get_components.outpus.result }});
+            core.info(`${ JSON.stringify(prebuilds) }`)
+            core.info(`${ JSON.stringify(components) }`)
+
+            for (const name in components) {
+              const comp = components[name];
+              if (comp.commit === undefined) {
+                continue;
+              }
+              if (comp.usePrebuilds) {
+                comp.commit = undefined;
+              }
+            }
+            core.info(JSON.stringify(components));
+
+            return {prebuilds, components};
+
+      - name: Run integration test
+        uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
+        with:
+          # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
+          # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
+          kicker_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.kicker.commit }}
+          gw_prebuild_image_tag: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).prebuilds.tags[0] }}
+          godwoken_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.godwoken.commit }}
+          gw_scripts_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.scripts.commit }}
+          polyjuice_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.polyjuice.commit }}
+          tests_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.tests.commit }}
+
+      - name: Write a comment on the PR with integration test conclusion
+        if: always()
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const dispatch = JSON.parse(`${{ github.event.inputs.dispatch }}`);
+
+            const workflowRun = (await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: github.run_id,
+            })).data;
+            core.info(`action html url: ${workflowRun.html_url}`)
+
+            const comment = (await github.rest.issues.getComment({
+              owner: dispatch.repo.owner,
+              repo: dispatch.repo.repo
+              comment_id: ${{ steps.write_workflow_run_comment.outputs.result }}
+            }).data;
+
+            const appendConclusion = `${comment.body}\n\n\n Run result: ${workflowRun.conclusion}`;
+            await github.rest.issues.updateComment({
+              owner: dispatch.repo.owner,
+              repo: dispatch.repo.repo
+              comment_id: ${{ steps.write_workflow_run_comment.outputs.result }}
+              body: appendConclusion,
+            });
