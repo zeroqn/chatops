@@ -27,8 +27,8 @@ jobs:
         uses: actions/github-script@v6
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
-          GITHUB_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
         with:
+          github-token: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
           script: |
             const { COMMENT_BODY } = process.env
 
@@ -57,9 +57,8 @@ jobs:
       - name: Dispatch from pull request
         uses: actions/github-script@v6
         id: dispatch
-        env:
-          GITHUB_TOKEN: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
         with:
+          github-token: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
           script: |
             const dispatch = {
               comment_body: "",
