@@ -243,7 +243,7 @@ jobs:
               }
             }
             core.info(JSON.stringify(components));
-            return {prebuilds, components};
+            return {prebuilds, components, dispatch};
 
       - name: Write a comment on the PR with component commits
         uses: actions/github-script@v6
@@ -253,6 +253,7 @@ jobs:
             const components_info = JSON.parse(`${{ steps.get_components.outputs.result }}`);
             const prebuilds = components_info.prebuilds;
             const components = components_info.components;
+            const dispatch = components_info.dispatch;
 
             // Post integration test info
             let componentInfo = `
