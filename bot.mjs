@@ -114,6 +114,15 @@ const components = {
     htmlUrl: undefined,
     branchOrCommit: undefined,
   },
+  tests: {
+    owner: "nervosnetwork",
+    repo: "godwoken-tests",
+    branch: "develop",
+    pattern: /tests: (.*)/,
+    commit: undefined,
+    htmlUrl: undefined,
+    branchOrCommit: undefined,
+  },
 };
 
 // Fetch pr commit
