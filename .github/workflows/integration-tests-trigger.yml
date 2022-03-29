@@ -32,7 +32,7 @@ jobs:
 
   integration-test:
     needs: from-comment
-    if: github.event.pull_request || (needs.from-comment.outputs.allowed_user == 'true' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/test')
+    if: github.event.pull_request || (needs.from-comment.outputs.allowed_user == 'true' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/test'))
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/github-script@v6
