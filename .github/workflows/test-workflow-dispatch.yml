@@ -15,4 +15,4 @@ jobs:
 
   test-workflow-call:
     needs: test-workflow-dispatch
-    uses: ./.github/workflows/test-workflow-call.yml@main
+    uses: ./.github/workflows/test-workflow-call.yml
