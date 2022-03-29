@@ -1,0 +1,18 @@
+name: Manual Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-workflow-dispatch:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/github-script@v6
+        id: test-script
+        with:
+          script: |
+            core.info(`${ github.run_id }`)
+
+  test-workflow-call:
+    needs: test-workflow-dispatch
+    uses: .github/workflows/test-workflow-call.yml@main
