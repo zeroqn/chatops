@@ -321,7 +321,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const {prebuilds, components} = JSON.parse(${{ steps.get_components.outpus.result }});
+            const {prebuilds, components} = JSON.parse(${{ steps.get_components.outputs.result }});
             core.info(`${ JSON.stringify(prebuilds) }`)
             core.info(`${ JSON.stringify(components) }`)
 
