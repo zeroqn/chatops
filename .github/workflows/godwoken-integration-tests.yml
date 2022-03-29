@@ -21,7 +21,7 @@ jobs:
           script: |
             core.info(`${{ github.event.inputs.dispatch }}`);
 
-            const dispatch = JSON.parse(${{ github.event.inputs.dispatch }});
+            const dispatch = JSON.parse(`${{ github.event.inputs.dispatch }}`);
             core.info(`comment body ${dispatch.comment_body}`);
 
             const getPrebuilds = async (org, page, perPage) => {
