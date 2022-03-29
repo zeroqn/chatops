@@ -47,7 +47,7 @@ jobs:
               }
             });
 
-            core.info!(`${JSON.stringify(resp, null, 2)}`);
+            core.info(`${JSON.stringify(resp, null, 2)}`);
 
   from-pr:
     if: github.event.pull_request
