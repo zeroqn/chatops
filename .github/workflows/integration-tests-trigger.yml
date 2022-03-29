@@ -37,7 +37,7 @@ jobs:
               issue: context.issue,
             };
 
-            const resp = await octokit.rest.actions.createWorkflowDispatch({
+            const resp = await github.rest.actions.createWorkflowDispatch({
               owner: "zeroqn",
               repo: "chatops",
               workflow_id: "godwoken-integration-tests.yml",
