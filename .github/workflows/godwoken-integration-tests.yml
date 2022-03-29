@@ -75,6 +75,7 @@ jobs:
                 commit: undefined,
                 htmlUrl: undefined,
                 branchOrCommit: undefined,
+                usePrebuilds: undefined,
               },
               scripts: {
                 owner: "nervosnetwork",
@@ -84,6 +85,7 @@ jobs:
                 commit: undefined,
                 htmlUrl: undefined,
                 branchOrCommit: undefined,
+                usePrebuilds: undefined,
               },
               polyjuice: {
                 owner: "nervosnetwork",
@@ -93,6 +95,7 @@ jobs:
                 commit: undefined,
                 htmlUrl: undefined,
                 branchOrCommit: undefined,
+                usePrebuilds: undefined,
               },
               web3: {
                 owner: "nervosnetwork",
@@ -108,6 +111,15 @@ jobs:
                 repo: "godwoken-kicker",
                 branch: "compatibility-changes",
                 pattern: /kicker: (.*)/,
+                commit: undefined,
+                htmlUrl: undefined,
+                branchOrCommit: undefined,
+              },
+              tests: {
+                owner: "nervosnetwork",
+                repo: "godwoken-tests",
+                branch: "develop",
+                pattern: /tests: (.*)/,
                 commit: undefined,
                 htmlUrl: undefined,
                 branchOrCommit: undefined,
@@ -170,6 +182,7 @@ jobs:
                 comp.branchOrCommit = match[1];
               } else if (prebuilds.manifest[name]) {
                 comp.branchOrCommit = prebuilds.manifest[name].sha;
+                comp.usePrebuilds = true;
               } else {
                 if (name === "web3") {
                   continue;
@@ -278,15 +291,13 @@ jobs:
               body: componentInfo,
             })
 
-  integration-test:
-    needs: component-info
-    uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
-    with:
-      # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
-      # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
-      kicker_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.kicker.commit }}
-      gw_prebuild_image_tag: ${{ fromJSON(needs.component-info.outputs.components_info).prebuilds.tags[0] }}
-      godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.godwoken.commit }}
-      gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.scripts.commit }}
-      polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.polyjuice.commit }}
-      web3_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.web3.commit }}
+      - name: Run integration test
+        uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
+        with:
+          # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
+          # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
+          kicker_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.kicker.commit }}
+          gw_prebuild_image_tag: ${{ fromJSON(needs.component-info.outputs.components_info).prebuilds.tags[0] }}
+          godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.godwoken.commit }}
+          gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.scripts.commit }}
+          polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.polyjuice.commit }}
