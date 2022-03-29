@@ -15,18 +15,13 @@ jobs:
     outputs:
       components_info: ${{ steps.get_components.outputs.result }}
     steps:
-      - name: Echo inputs dispatch
-        id: echo_inputs_dispatch
-        run: |
-          echo "dispatch string '${{ inputs.dispatch }}'"
-
       - uses: actions/github-script@v6
         id: get_components
         with:
           script: |
-            core.info(`${{ inputs.dispatch }}`);
+            core.info(`${{ github.event.inputs.dispatch }}`);
 
-            const dispatch = JSON.parse(${{ inputs.dispatch }});
+            const dispatch = JSON.parse(${{ github.event.inputs.dispatch }});
             core.info(`comment body ${dispatch.comment_body}`);
 
             const getPrebuilds = async (org, page, perPage) => {
