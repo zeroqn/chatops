@@ -11,9 +11,10 @@ on:
 
 jobs:
   component-info:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     outputs:
-      components_info: ${{ steps.get_components.outputs.result }}
+      components_info: ${{ steps.filter_prebuilds_components.outputs.result }}
+      comment_id: ${{ steps.write_workflow_run_comment.outputs.result }}
     steps:
       - uses: actions/github-script@v6
         id: get_components
@@ -332,18 +333,23 @@ jobs:
 
             return {prebuilds, components};
 
-      - name: Run integration test
-        uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
-        with:
-          # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
-          # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
-          kicker_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.kicker.commit }}
-          gw_prebuild_image_tag: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).prebuilds.tags[0] }}
-          godwoken_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.godwoken.commit }}
-          gw_scripts_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.scripts.commit }}
-          polyjuice_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.polyjuice.commit }}
-          tests_ref: ${{ fromJSON(steps.filter_prebuilds_components.outputs.result).components.tests.commit }}
+  run-integration-test:
+    needs: component-info
+    uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
+    with:
+      # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
+      # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
+      kicker_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.kicker.commit }}
+      gw_prebuild_image_tag: ${{ fromJSON(needs.component-info.outputs.components_info).prebuilds.tags[0] }}
+      godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.godwoken.commit }}
+      gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.scripts.commit }}
+      polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.polyjuice.commit }}
+      tests_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.tets.commit }}
 
+  run-result-feedback:
+    needs: component-info
+    runs-on: ubuntu-latest
+    steps:
       - name: Write a comment on the PR with integration test conclusion
         if: always()
         uses: actions/github-script@v6
@@ -358,16 +364,19 @@ jobs:
             })).data;
             core.info(`action html url: ${workflowRun.html_url}`)
 
+            const comment_id = ${{ needs.component-info.outputs.comment_id }};
+            core.info(`comment id ${comment_id}`);
+
             const comment = (await github.rest.issues.getComment({
               owner: dispatch.repo.owner,
               repo: dispatch.repo.repo
-              comment_id: ${{ steps.write_workflow_run_comment.outputs.result }}
+              comment_id,
             }).data;
 
             const appendConclusion = `${comment.body}\n\n\n Run result: ${workflowRun.conclusion}`;
             await github.rest.issues.updateComment({
               owner: dispatch.repo.owner,
               repo: dispatch.repo.repo
-              comment_id: ${{ steps.write_workflow_run_comment.outputs.result }}
+              comment_id,
               body: appendConclusion,
             });
