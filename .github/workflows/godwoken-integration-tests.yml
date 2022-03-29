@@ -21,6 +21,8 @@ jobs:
           DISPATCH: ${{ inputs.dispatch }}
         with:
           script: |
+            core.info(`${process.env.DISPATCH}`);
+
             const dispatch = JSON.parse(process.env.DISPATCH);
 
             core.info(`comment body ${dispatch.comment_body}`);
