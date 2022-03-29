@@ -311,6 +311,7 @@ jobs:
               repo: dispatch.repo.repo,
               body: componentInfo,
             }).data;
+            core.info(`comment ${comment}`);
 
             return comment.id
 
