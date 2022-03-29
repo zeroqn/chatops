@@ -311,9 +311,9 @@ jobs:
               repo: dispatch.repo.repo,
               body: componentInfo,
             });
-            core.info(`comment ${JSON.stringify(comment, null, 2)}`);
+            core.info(`comment ${JSON.stringify(comment.data, null, 2)}`);
 
-            return comment.id
+            return comment.data.id;
 
       - name: Filter components use prebuilds
         id: filter_prebuilds_components
