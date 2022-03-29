@@ -21,21 +21,8 @@ jobs:
 
       # restrict /itest to users with admin or write permission
       # see https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-repository-permissions-for-a-user
-      - name: Check if user does have correct permissions
+      - name: Dispatch if user does have correct permission
         if: contains('admin write', fromJson(steps.user_permission.outputs.data).permission)
-        id: check_user_perm
-        run: |
-          echo "User '${{ github.event.sender.login }}' has permission '${{ fromJson(steps.user_permission.outputs.data).permission }}' allowed values: 'admin', 'write'"
-          echo "::set-output name=allowed_user::true"
-    outputs:
-      allowed_user: ${{ steps.check_user_perm.outputs.allowed_user }}
-
-  integration-test:
-    needs: from-comment
-    if: github.event.pull_request || (needs.from-comment.outputs.allowed_user == 'true' && github.event.issue.pull_request && startsWith(github.event.comment.body, '/test'))
-    runs-on: ubuntu-20.04
-    steps:
-      - uses: actions/github-script@v6
         id: dispatch
         env:
           COMMENT_BODY: ${{ github.event.comment.body }}
@@ -45,6 +32,32 @@ jobs:
 
             const dispatch = {
               comment_body: COMMENT_BODY,
+              repo: context.repo,
+              issue: context.issue,
+            };
+
+            const resp = await octokit.rest.actions.createWorkflowDispatch({
+              owner: "zeroqn",
+              repo: "chatops",
+              workflow_id: "godwoken-integration-tests.yml",
+              ref: "main",
+              inputs: {
+                dispatch,
+              }
+            });
+
+            core.info!(`${JSON.stringify(resp, null, 2)}`);
+
+  from-pr:
+    if: github.event.pull_request
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/github-script@v6
+        id: dispatch
+        with:
+          script: |
+            const dispatch = {
+              comment_body: "",
               repo: context.repo,
               issue: context.issue,
             };
