@@ -30,9 +30,6 @@ jobs:
         with:
           github-token: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
           script: |
-            const j = JSON.stringify(${{ job }}, null, 2);
-            core.info(`${j}`);
-
             const { COMMENT_BODY } = process.env
 
             const dispatch = {
