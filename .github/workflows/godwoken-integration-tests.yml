@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       components_info: ${{ steps.filter_prebuilds_components.outputs.result }}
-      comment_id: ${{ steps.write_workflow_run_comment.outputs.result }}
+      comment_id: ${{ steps.post_workflow_run_comment.outputs.result }}
     steps:
       - uses: actions/github-script@v6
         id: get_components
@@ -259,8 +259,8 @@ jobs:
             core.info(JSON.stringify(components));
             return {prebuilds, components};
 
-      - name: Write a comment on the PR with component commits
-        id: write_workflow_run_comment
+      - name: Post a comment about component information to PR
+        id: post_workflow_run_comment
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -363,16 +363,17 @@ jobs:
             const comment_id = `${{ needs.component-info.outputs.comment_id }}`;
             core.info(`comment id ${comment_id}`);
 
-            const comment = (await github.rest.issues.getComment({
+            const comment = await github.rest.issues.getComment({
               owner: dispatch.repo.owner,
               repo: dispatch.repo.repo,
               comment_id,
-            }).data;
+            });
 
-            const appendConclusion = `${comment.body}\n\n\n Run result: ${{ needs.component-info.result }}`;
-            await github.rest.issues.updateComment({
+            const appendConclusion = `${comment.data.body}\n\n\n Run result: ${{ needs.component-info.result }}`;
+            const resp = await github.rest.issues.updateComment({
               owner: dispatch.repo.owner,
               repo: dispatch.repo.repo,
               comment_id,
               body: appendConclusion,
             });
+            core.info(`${JSON.stringify(resp, null, 2)}`);
