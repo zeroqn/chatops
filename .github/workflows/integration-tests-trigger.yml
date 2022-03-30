@@ -78,4 +78,4 @@ jobs:
               }
             });
 
-            core.info!(`${JSON.stringify(resp, null, 2)}`);
+            core.info(`${JSON.stringify(resp, null, 2)}`);
