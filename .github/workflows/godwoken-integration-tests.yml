@@ -155,15 +155,17 @@ jobs:
             core.info(`pkg: ${JSON.stringify(pkg)}`);
 
             // Fetch prebuilds components commit;
-            const manifestPage = JSON.stringify(
-              await github.request(`GET ${prebuilds.htmlUrl}`)
+            const packagePage = JSON.stringify(
+              await octokit.request(`GET ${prebuilds.htmlUrl}`)
             );
+            const manifestContesnt = packagePage.substring(packagePage.indexOf("Manifest"));
             for (const name in prebuilds.manifest) {
               const label = prebuilds.manifest[name];
-              const match = label.pattern.exec(manifestPage);
+              const match = label.pattern.exec(manifestContesnt);
               if (match) {
                 label.sha = match[1];
               } else {
+                console.log(`${manifestContesnt}`);
                 throw `${name}-sha1 not found`;
               }
             }
