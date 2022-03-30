@@ -279,13 +279,13 @@ jobs:
 
             // Post integration test info
             let componentInfo = `
-            Run integration test
+            \### Run integration test
 
-            [workflow run id ${workflowRun.id}](${workflowRun.html_url})
+            Workflow Run: [id ${workflowRun.id}](${workflowRun.html_url})
               
-            With following specific components:
+            \### Components:
 
-            prebuilds: [${prebuilds.tags}](${prebuilds.htmlUrl})
+            - prebuilds: [${prebuilds.tags}](${prebuilds.htmlUrl})
             `;
 
             for (const name in components) {
@@ -297,7 +297,7 @@ jobs:
               if (comp.usePrebuilds) {
                 shortSha = `prebuilds ${shortSha}`;
               }
-              componentInfo = `${componentInfo}\n${name}: [${shortSha}](${comp.htmlUrl})`;
+              componentInfo = `${componentInfo}\n-${name}: [${shortSha}](${comp.htmlUrl})`;
             }
             core.info(`${componentInfo}`);
 
@@ -369,7 +369,7 @@ jobs:
               comment_id,
             });
 
-            const appendConclusion = `${comment.data.body}\n\n\n Run result: ${{ needs.component-info.result }}`;
+            const appendConclusion = `${comment.data.body}\n###Run Result\n**${{ needs.component-info.result }}**`;
             const resp = await github.rest.issues.updateComment({
               owner: dispatch.repo.owner,
               repo: dispatch.repo.repo,
