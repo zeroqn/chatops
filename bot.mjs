@@ -6,6 +6,14 @@ const octokit = new Octokit({
   auth: process.env.GITHUB_AUTH_TOKEN,
 });
 
+// const comment = await octokit.rest.issues.createComment({
+//   issue_number: 1,
+//   owner: "zeroqn",
+//   repo: "chatops",
+//   body: "/itest",
+// });
+// console.log(`${JSON.stringify(comment.data.id)}`);
+
 const context = {
   repo: {
     owner: "nervosnetwork",
@@ -156,15 +164,17 @@ prebuilds.sha = pkg.name;
 console.log(`pkg: ${JSON.stringify(pkg)}`);
 
 // Fetch prebuilds components commit;
-const manifestPage = JSON.stringify(
+const packagePage = JSON.stringify(
   await octokit.request(`GET ${prebuilds.htmlUrl}`)
 );
+const manifestContesnt = packagePage.substring(packagePage.indexOf("Manifest"));
 for (const name in prebuilds.manifest) {
   const label = prebuilds.manifest[name];
-  const match = label.pattern.exec(manifestPage);
+  const match = label.pattern.exec(manifestContesnt);
   if (match) {
     label.sha = match[1];
   } else {
+    console.log(`${manifestContesnt}`);
     throw `${name}-sha1 not found`;
   }
 }
