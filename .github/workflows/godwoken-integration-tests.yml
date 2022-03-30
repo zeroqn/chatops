@@ -362,11 +362,12 @@ jobs:
         uses: actions/github-script@v6
         env:
           INTEGRATION_CONCLUSION: ${{ needs.component-info.result }}
+          COMMENT_ID: ${{ needs.component-info.outputs.comment_id }}
         with:
           script: |
             const dispatch = JSON.parse(`${{ github.event.inputs.dispatch }}`);
 
-            const comment_id = ${{ needs.component-info.outputs.comment_id }};
+            const comment_id = `${{ needs.component-info.outputs.comment_id }}`;
             core.info(`comment id ${comment_id}`);
 
             const comment = (await github.rest.issues.getComment({
