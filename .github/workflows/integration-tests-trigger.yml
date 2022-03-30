@@ -25,15 +25,11 @@ jobs:
         if: contains('admin write', fromJson(steps.user_permission.outputs.data).permission)
         id: dispatch
         uses: actions/github-script@v6
-        env:
-          COMMENT_BODY: ${{ github.event.comment.body }}
         with:
           github-token: ${{ secrets.WORKFLOW_DISPATCH_TOKEN }}
           script: |
-            const { COMMENT_BODY } = process.env
-
             const dispatch = {
-              comment_body: COMMENT_BODY,
+              comment_body: `${{ github.event.comment.body }}`,
               repo: context.repo,
               issue: context.issue,
             };
