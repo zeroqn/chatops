@@ -279,7 +279,7 @@ jobs:
 
             // Post integration test info
             let componentInfo = `
-            \### Run integration test
+            \### Running integration test
 
             Workflow Run Id: [${workflowRun.id}](${workflowRun.html_url})
               
@@ -303,16 +303,27 @@ jobs:
             componentInfo = `${componentInfo}
             \### Manually running integration test
             
-            Post a comment contains \`\`\`/itest\`\`\`, For example
+            Post a comment contains
             \`\`\`
             /itest
-            prebuilds: tag
-            godwoken: branch/ref
-            scripts: branch/ref
-            polyjuice: branch/ref
-            web3: branch/ref
-            kicker: branch/ref
-            tests: branch/ref
+            [prebuilds: tag]
+            [godwoken: branch/ref]
+            [scripts: branch/ref]
+            [polyjuice: branch/ref]
+            [web3: branch/ref]
+            [kicker: branch/ref]
+            [tests: branch/ref]
+            \`\`\`
+
+            Note: \'\'\'[]\'\'\' means optional
+            For example
+
+            \`\`\`
+            /itest
+            prebuilds: dev-202203280240
+            godwoken: develop
+            scripts: 81676d9d53ffdf5bbaa60483928d07da16eb4a88
+            polyjuice: e37553b9
             \`\`\``;
             core.info(`${componentInfo}`);
 
