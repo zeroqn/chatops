@@ -340,27 +340,28 @@ jobs:
 
             return {prebuilds, components};
 
-  run-integration-test:
-    needs: component-info
-    uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
-    with:
-      # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
-      # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
-      kicker_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.kicker.commit }}
-      gw_prebuild_image_tag: ${{ fromJSON(needs.component-info.outputs.components_info).prebuilds.tags[0] }}
-      godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.godwoken.commit }}
-      gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.scripts.commit }}
-      polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.polyjuice.commit }}
-      tests_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.tests.commit }}
+  # run-integration-test:
+  #   needs: component-info
+  #   uses: nervosnetwork/godwoken-tests/.github/workflows/reusable-integration-test-v1.yml@develop
+  #   with:
+  #     # github.head_ref: The head_ref or source branch of the pull request in a workflow run. This property is only available when the event that triggers a workflow run is either pull_request or pull_request_target.
+  #     # github.ref: The branch or tag ref that triggered the workflow run. For branches this is the format refs/heads/<branch_name>, and for tags it is refs/tags/<tag_name>.
+  #     kicker_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.kicker.commit }}
+  #     gw_prebuild_image_tag: ${{ fromJSON(needs.component-info.outputs.components_info).prebuilds.tags[0] }}
+  #     godwoken_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.godwoken.commit }}
+  #     gw_scripts_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.scripts.commit }}
+  #     polyjuice_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.polyjuice.commit }}
+  #     tests_ref: ${{ fromJSON(needs.component-info.outputs.components_info).components.tests.commit }}
 
   run-result-feedback:
-    needs: [component-info, run-integration-test]
+    needs: component-info 
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - uses: actions/github-script@v6
+      - name: Update comment about integration test result
+        uses: actions/github-script@v6
         env:
-          INTEGRATION_CONCLUSION: ${{ needs.run-integration-test.result }}
+          INTEGRATION_CONCLUSION: ${{ needs.component-info.result }}
         with:
           script: |
             const dispatch = JSON.parse(`${{ github.event.inputs.dispatch }}`);
