@@ -360,9 +360,6 @@ jobs:
     steps:
       - name: Update comment about integration test result
         uses: actions/github-script@v6
-        env:
-          INTEGRATION_CONCLUSION: ${{ needs.component-info.result }}
-          COMMENT_ID: ${{ needs.component-info.outputs.comment_id }}
         with:
           script: |
             const dispatch = JSON.parse(`${{ github.event.inputs.dispatch }}`);
@@ -376,10 +373,10 @@ jobs:
               comment_id,
             }).data;
 
-            const appendConclusion = `${comment.body}\n\n\n Run result: ${process.env.INTEGRATION_CONCLUSION}`;
+            const appendConclusion = `${comment.body}\n\n\n Run result: ${{ needs.component-info.result }}`;
             await github.rest.issues.updateComment({
               owner: dispatch.repo.owner,
-              repo: dispatch.repo.repo
+              repo: dispatch.repo.repo,
               comment_id,
               body: appendConclusion,
             });
