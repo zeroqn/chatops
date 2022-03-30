@@ -297,7 +297,7 @@ jobs:
               if (comp.usePrebuilds) {
                 shortSha = `prebuilds ${shortSha}`;
               }
-              componentInfo = `${componentInfo}\n-${name}: [${shortSha}](${comp.htmlUrl})`;
+              componentInfo = `${componentInfo}\n- ${name}: [${shortSha}](${comp.htmlUrl})`;
             }
             core.info(`${componentInfo}`);
 
@@ -369,7 +369,7 @@ jobs:
               comment_id,
             });
 
-            const appendConclusion = `${comment.data.body}\n###Run Result\n**${{ needs.component-info.result }}**`;
+            const appendConclusion = `${comment.data.body}\n### Run Result\n**${{ needs.component-info.result }}**`;
             const resp = await github.rest.issues.updateComment({
               owner: dispatch.repo.owner,
               repo: dispatch.repo.repo,
