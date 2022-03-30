@@ -156,7 +156,7 @@ jobs:
 
             // Fetch prebuilds components commit;
             const packagePage = JSON.stringify(
-              await octokit.request(`GET ${prebuilds.htmlUrl}`)
+              await github.request(`GET ${prebuilds.htmlUrl}`)
             );
             const manifestContesnt = packagePage.substring(packagePage.indexOf("Manifest"));
             for (const name in prebuilds.manifest) {
