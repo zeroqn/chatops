@@ -281,12 +281,11 @@ jobs:
             let componentInfo = `
             \### Run integration test
 
-            Workflow Run: [id ${workflowRun.id}](${workflowRun.html_url})
+            Workflow Run Id: [${workflowRun.id}](${workflowRun.html_url})
               
             \### Components:
 
-            - prebuilds: [${prebuilds.tags}](${prebuilds.htmlUrl})
-            `;
+            - prebuilds: [${prebuilds.tags}](${prebuilds.htmlUrl})`;
 
             for (const name in components) {
               const comp = components[name];
@@ -299,6 +298,22 @@ jobs:
               }
               componentInfo = `${componentInfo}\n- ${name}: [${shortSha}](${comp.htmlUrl})`;
             }
+
+            // Add manual trigger example
+            componentInfo = `${componentInfo}
+            \### Manually running integration test
+            
+            Post a comment contains \`\`\`/itest\`\`\`, For example
+            \`\`\`
+            /itest
+            prebuilds: tag
+            godwoken: branch/ref
+            scripts: branch/ref
+            polyjuice: branch/ref
+            web3: branch/ref
+            kicker: branch/ref
+            tests: branch/ref
+            \`\`\``;
             core.info(`${componentInfo}`);
 
             const comment = await github.rest.issues.createComment({
