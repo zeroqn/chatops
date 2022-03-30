@@ -1,0 +1,29 @@
+name: Integration test comment trigger
+
+on:
+  issue_comment:
+    types:
+      - created
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.issue.pull_request && github.event.comment.body == '/deploy' }}
+    steps:
+      - name: Get PR SHA
+        env:
+          BODY: ${{ github.event.comment.body }}
+        id: sha
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          scripts: |
+            const { owner, repo, number } = context.issue;
+            const pr = await github.pulls.get({
+              owner,
+              repo,
+              pull_number: number,
+            });
+            return pr.data.head.sha
+      - uses: actions/checkout@v2
+        run: echo "${{ steps.sha.outputs.result }}"
