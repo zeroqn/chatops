@@ -315,8 +315,7 @@ jobs:
             [tests: branch/ref]
             \`\`\`
 
-            Note: \`\`\`[]\`\`\` means optional
-            For example
+            Note: \`\`\`[]\`\`\` means optional, for example
 
             \`\`\`
             /itest
