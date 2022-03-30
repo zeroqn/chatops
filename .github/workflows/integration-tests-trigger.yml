@@ -67,6 +67,12 @@ jobs:
               repo: context.repo,
               issue: context.issue,
             };
+            const jsonDispatch = JSON.stringify(dispatch)
+              .replace(/\\b/g, "\\\\b")
+              .replace(/\\f/g, "\\\\f")
+              .replace(/\\n/g, "\\\\n")
+              .replace(/\\r/g, "\\\\r")
+              .replace(/\\t/g, "\\\\t");
 
             const resp = await github.rest.actions.createWorkflowDispatch({
               owner: "zeroqn",
@@ -74,7 +80,7 @@ jobs:
               workflow_id: "godwoken-integration-tests.yml",
               ref: "main",
               inputs: {
-                dispatch,
+                dispatch: jsonDispatch,
               }
             });
 
