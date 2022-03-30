@@ -278,7 +278,7 @@ jobs:
             core.info(`action html url: ${workflowRun.html_url}`)
 
             // Post integration test info
-            let componentInfo = `
+            let integrationTestInfo = `
             \### Running integration test
 
             Workflow Run Id: [${workflowRun.id}](${workflowRun.html_url})
@@ -296,11 +296,11 @@ jobs:
               if (comp.usePrebuilds) {
                 shortSha = `prebuilds ${shortSha}`;
               }
-              componentInfo = `${componentInfo}\n- ${name}: [${shortSha}](${comp.htmlUrl})`;
+              integrationTestInfo = `${integrationTestInfo}\n- ${name}: [${shortSha}](${comp.htmlUrl})`;
             }
 
             // Add manual trigger example
-            componentInfo = `${componentInfo}
+            integrationTestInfo = `${integrationTestInfo}
             \### Manually running integration test
             
             Post a comment contains
@@ -315,7 +315,7 @@ jobs:
             [tests: branch/ref]
             \`\`\`
 
-            Note: \'\'\'[]\'\'\' means optional
+            Note: \`\`\`[]\`\`\` means optional
             For example
 
             \`\`\`
@@ -325,13 +325,13 @@ jobs:
             scripts: 81676d9d53ffdf5bbaa60483928d07da16eb4a88
             polyjuice: e37553b9
             \`\`\``;
-            core.info(`${componentInfo}`);
+            core.info(`${integrationTestInfo}`);
 
             const comment = await github.rest.issues.createComment({
               issue_number: dispatch.issue.number,
               owner: dispatch.repo.owner,
               repo: dispatch.repo.repo,
-              body: componentInfo,
+              body: integrationTestInfo,
             });
             core.info(`comment ${JSON.stringify(comment.data, null, 2)}`);
 
