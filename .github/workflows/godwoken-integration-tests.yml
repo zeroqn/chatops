@@ -1,4 +1,4 @@
-name: Integration test from PR
+name: Integration Test Chatbot
 # Triggered use /itest comment from pr
 
 on:
